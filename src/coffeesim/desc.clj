@@ -69,10 +69,11 @@
     (join " " adjectives)))
          
   
-(defrecord CoffeeDesc [decaf? organic? fair-trade? adjectives origin])
+(defrecord CoffeeDesc [description decaf? organic? fair-trade? adjectives origin])
 
 (defn parse-description [desc-str]
-  (CoffeeDesc. (decaf? desc-str)
+  (CoffeeDesc. desc-str
+               (decaf? desc-str)
                (organic? desc-str)
                (fair-trade? desc-str)
                (extract-adj desc-str)
