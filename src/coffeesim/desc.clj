@@ -2,6 +2,10 @@
   (:use [clojure.string :only (split, join)]))
 
 
+
+(defrecord CoffeeDesc
+    [description decaf? organic? fair-trade? adjectives origin])
+
 ;; Some nice constants from java-land
 
 (def countries
@@ -47,30 +51,29 @@
       :else (join ", " countries))))
 
 
-;; well, by the parameters of the problem, you're an adjective if you're
+;; well, by the parameters of the requirements, you're an adjective if you're
 ;; neither "decaf", "organic", "fair trade", nor any thing that a country
 ;; can be derived from. So let's go with that.
-
-(defn unfair-tradify-description [desc]
-  (if (fair-trade? desc)
-    (join "" (split desc #"(?i)fair\s*trade\s?"))
-    desc))
-  
 (defn adj? [some-string]
   (not (or (decaf? some-string)
            (organic? some-string)
            (countryable? some-string))))
 
-;; But we need a function to handle removing fair trade first, since it's two words.
-;; then we can inspect everything else word by word.
+;; We need a function to handle removing "fair trade" first,
+;; since it's two words and we're doing word-by-word analysis.
+(defn unfair-tradify-description [desc]
+  (if (fair-trade? desc)
+    (join "" (split desc #"(?i)fair\s*trade\s?"))
+    desc))
+
+;; After "fair trade" is removed (if its present)
+;; we can inspect everything else word by word.
 (defn extract-adj [description]  
   (let [unfair-desc (unfair-tradify-description description)
         adjectives (filter adj? (split unfair-desc #"\s"))]
     (join " " adjectives)))
          
-  
-(defrecord CoffeeDesc [description decaf? organic? fair-trade? adjectives origin])
-
+;; per the requirement
 (defn parse-description [desc-str]
   (CoffeeDesc. desc-str
                (decaf? desc-str)
@@ -80,5 +83,3 @@
                (extract-country desc-str)))
 
 
-
-  

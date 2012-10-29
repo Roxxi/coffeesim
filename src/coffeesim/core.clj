@@ -1,6 +1,7 @@
 (ns coffeesim.core
   (:use coffeesim.desc
         coffeesim.report
+        coffeesim.rating
         [clojure.string :only (split, join)]
         clojure.pprint)
   (:gen-class))
