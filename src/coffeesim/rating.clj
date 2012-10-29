@@ -16,8 +16,8 @@
              ratings '()]
         (let [[person-id description rate] (split line #"\t")
               rating (Rating. person-id
-                                    (parse-description description)
-                                    rate)
+                              (parse-description description)
+                              rate)
               ratings (cons rating ratings)]          
           (if (empty? next-lines)
             ratings
