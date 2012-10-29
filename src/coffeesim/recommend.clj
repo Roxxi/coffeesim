@@ -1,4 +1,4 @@
-(ns coffeesim.recomend
+(ns coffeesim.recommend
   (:use coffeesim.rating
         coffeesim.desc
         [clojure.string :only (split, join)]
@@ -136,5 +136,6 @@
 ;; 2. build table ratings
 
 (defn bootstrap [filepath]
-  (let [user-table (make-user-table-from-ratings ratings)]
+  (let [ratings (extract-ratings-from-file filepath)
+        user-table (make-user-table-from-ratings ratings)]
     user-table))
