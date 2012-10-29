@@ -3,6 +3,7 @@
         coffeesim.rating
         coffeesim.desc
         coffeesim.desc-dist
+        roxxi.utils.print
         [clojure.string :only (split, join)]
         clojure.pprint))
 
@@ -98,13 +99,14 @@ through a purpose driven data source like a SQL database, etc"
        (/ (reduce + 0 ratings)
           (count ratings)))))
   (rating->descriptions-ordered-by-similarity [_ rating]
-    (let [this-desc (:description rating)]      
+    (let [this-desc (:description rating)
+          unique-descs (set (map :description ratings))]
       (sort
        #(- (:score %) (:score %2))
-       (map (fn [r]
-              {:score (desc-similarity this-desc (:description r))
-               :desc (:description r)})
-            ratings)))))
+       (map (fn [d]
+              {:score (desc-similarity this-desc d)
+               :desc d})
+            unique-descs)))))
 
 (defn make-user-table-from-ratings [ratings]
   (MemoryUserTable. (extract-map ratings
@@ -143,11 +145,15 @@ through a purpose driven data source like a SQL database, etc"
         :else
         (let [first-choices (map first all-recs)
               best-score (apply min (map :score first-choices))
-              best-choice (first (filter #(= (:score %) best-score)
-                                         first-choices))
+              best-choice (first
+                           (filter
+                            #(= (:score %) best-score)
+                            first-choices))
               best-desc (:desc best-choice)]
           (recur (cons best-desc top3)
-                 (map #(if (= best-desc (:desc (first %))) (rest %) %)
+                 (map #(if (= best-desc (:desc (first %)))
+                         (rest %)
+                         %)
                       all-recs)))))))
 
 
@@ -158,11 +164,12 @@ through a purpose driven data source like a SQL database, etc"
                                user
                                %
                                (description->average-rating rating-table %))
-                             rec-descs)]
-    recommendations))
+                             rec-descs)
+        sorted-recs (sort recommendations)]
+    sorted-recs))
     
 (defn users->recommendations [users user-table rating-table]
-  (concat (map #(user->recommendations % user-table rating-table)
+  (apply concat (map #(user->recommendations % user-table rating-table)
        users)))
 
 (defn generate-recs [filepath]

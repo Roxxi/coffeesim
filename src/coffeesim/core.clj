@@ -2,6 +2,7 @@
   (:use coffeesim.desc
         coffeesim.report
         coffeesim.rating
+        coffeesim.recommend
         [clojure.string :only (split, join)]
         clojure.pprint)
   (:gen-class))
@@ -44,12 +45,24 @@
 
 ;; # Part 3
 
+(defn recommend [filepath]
+  (let [recs (generate-recs filepath)]
+    (doseq [rec recs]
+      (println
+       (str (:person-id rec)
+            "\t"
+            (:description (:description rec))
+            "\t"
+            (:rating rec))))))
+    
+
 
 
 (defn -main [& args]
   (cond
     (= (first args) "parse") (parse (join " " (rest args))),
     (= (first args) "summarize") (summarize (second args)),
+    (= (first args) "recommend") (recommend (second args))
     :else
     (println (str "Unknown command. 'parse <word word word>'"
                   "and 'summarize <absolute-file-path>' are the"

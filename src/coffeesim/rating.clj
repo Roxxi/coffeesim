@@ -3,15 +3,19 @@
         [clojure.string :only (split, join)])
   (:import [java.lang Comparable]))
 
-(defrecord Rating [person-id description rating] Comparable
-  (compareTo ^int [this other-rating]
-    (- rating (:rating other-rating)))
-  (toString ^String [_] (str person-id ", " description ", " rating)))
-
 (defn parse-int [s]
   (Integer. (re-find  #"\d+" s)))
 
-(defn make-rating [person-id desc rating]
+(defrecord Rating [person-id description rating] Comparable
+  (compareTo ^int [_ other-rating]
+    (if (> (- rating (:rating other-rating)) 0)
+      -1
+      1))
+  (toString ^String [_] (str person-id ", " description ", " rating)))
+
+
+
+(defn make-rating [person-id desc #^Integer rating]
   (Rating. person-id desc rating))
 
 
