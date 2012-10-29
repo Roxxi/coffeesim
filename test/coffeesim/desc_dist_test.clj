@@ -10,10 +10,10 @@
 
 (deftest distance-tests
   (testing "Identity"
-    (is (= (desc-similiarty d1 d1) 0.0)))
+    (is (= (desc-similarity d1 d1) 0.0)))
   
   (testing "Distances"
-    (is (= (desc-similiarty d1 d2) 1.0))
-    (is (= (desc-similiarty d2 d3) 2.184124156794664))
-    (is (= (desc-similiarty d3 d4) 2.5261582914535263))
-    (is (= (desc-similiarty d4 d1) 3.3730174597280764))))
+    (is (= (desc-similarity d1 d2) 1.0))
+    (is (= (desc-similarity d2 d3) 2.184124156794664))
+    (is (= (desc-similarity d3 d4) 2.5261582914535263))
+    (is (= (desc-similarity d4 d1) 3.3730174597280764))))

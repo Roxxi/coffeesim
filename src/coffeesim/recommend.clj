@@ -1,6 +1,8 @@
 (ns coffeesim.recommend
-  (:use coffeesim.rating
+  (:use coffeesim.utils
+        coffeesim.rating
         coffeesim.desc
+        coffeesim.desc-dist
         [clojure.string :only (split, join)]
         clojure.pprint))
 
@@ -59,56 +61,20 @@
 ;; Discussion throughout!
 
 
-
-
 (defprotocol UserTable
+    "The UserTable abstracts around the kinds of questions we could answer
+through a purpose driven data source like a SQL database, etc"
   (user->ratings [_ user] "returns ratings for a particular user")
   (get-users [_] "returns a list of users"))
 
 (defprotocol RatingTable
-  (rating->average-rating [_ rating]
-    "Returns the average rating that is associcated to a particular rating")
-  (rating->three-similar-ratings [_ rating]
-    "Returns three most similar ratings for a given rating"))
-
-
-
-(defn extract-map [some-seq
-                   & {:keys [xform
-                             key-extractor
-                             value-extractor
-                             list-values
-                             value-kons
-                             value-knil]
-                      :or {xform identity
-                           key-extractor identity,
-                           value-extractor identity,
-                           list-values false,
-                           value-kons cons,
-                           value-knil nil}}]
-  (let [xform-assoc!
-        (if list-values
-          (fn xform-assoc-list-values! [some-map elem]
-            (let [xformed (xform elem)
-                  the-key (key-extractor xformed)
-                  the-val (value-extractor xformed)
-                  prev-val (get some-map the-key)]
-              (if (nil? prev-val)
-                (assoc! some-map the-key (value-kons the-val value-knil))
-                (assoc! some-map the-key (value-kons the-val prev-val)))))
-          (fn simple-xform-assoc! [some-map elem]
-            (let [xformed (xform elem)]
-              (assoc! some-map
-                      (key-extractor xformed)
-                      (value-extractor xformed)))))]       
-    (persistent!
-     (loop [elems some-seq
-            new-map (transient {})]
-       (if (empty? elems)
-         new-map
-         (recur (rest elems)
-                (xform-assoc! new-map (first elems))))))))
-
+  "The RatingTable abstracts around the kinds of questions we could answer
+through a purpose driven data source like a SQL database, etc"
+  (description->average-rating [_ description]
+    "Returns the average rating that is associcated to a particular description")
+  (rating->descriptions-ordered-by-similarity [_ rating]
+    "Returns descriptions sorted by descending
+     similarity score for a given rating"))
 
 (deftype MemoryUserTable [user=>ratings]
   UserTable  
@@ -120,22 +86,90 @@
 
 (deftype MemoryRatingTable [ratings]
   RatingTable
-  (rating->average-rating [_ rating]
-    "Returns the average rating that is associcated to a particular rating")
-  (rating->three-similar-ratings [_ rating]
-    "Returns three most similar ratings for a given rating"))
+  ;; The results of both of these methods be cached by rating
+  ;; for performance improvement, but its too early to optimize :)
+  ;; and I proobably would be using a database of some sort
+  ;; in the real world.
+  (description->average-rating [_ description]
+    (let [all-descs (map :description ratings)
+          same-rating? #(= (:description %) description)
+          ratings  (map parse-int (map :rating (filter same-rating? ratings)))]
+      (double
+       (/ (reduce + 0 ratings)
+          (count ratings)))))
+  (rating->descriptions-ordered-by-similarity [_ rating]
+    (let [this-desc (:description rating)]      
+      (sort
+       #(- (:score %) (:score %2))
+       (map (fn [r]
+              {:score (desc-similarity this-desc (:description r))
+               :desc (:description r)})
+            ratings)))))
 
 (defn make-user-table-from-ratings [ratings]
   (MemoryUserTable. (extract-map ratings
                                  :key-extractor :person-id
                                  :list-values true)))
 
+(defn make-rating-table-from-ratings [ratings]
+  (MemoryRatingTable. ratings))
 
-;; ## Boostrap phase
-;; 1. build table of users 
-;; 2. build table ratings
 
-(defn bootstrap [filepath]
+(defn user->recommendation-descriptions [user user-table rating-table]
+  (let [user-ratings (user->ratings user-table user)
+        closenesses (map
+                     #(rating->descriptions-ordered-by-similarity rating-table %)
+                     user-ratings)
+        user-descriptions (map :description user-ratings)
+        user-already-tasted? (fn [scored-desc]
+                               (some #(= (:desc scored-desc) %)
+                                     user-descriptions))
+        ;; take out everything that the user has already tasted
+        new-candidates (map #(remove user-already-tasted? %) closenesses)]
+    (loop [top3 ()
+           all-recs new-candidates]
+      (cond
+        ;; if we run out of recommendations...
+        (every? empty? all-recs) top3,
+        ;; if we find the three best...
+        (= (count top3) 3) top3,
+        ;; else:
+        ;;   - look at the first possible candidates from each set of recs
+        ;;   - figure out the score of the best one
+        ;;   - figure out which one has the best score
+        ;;   - add the one with the best score to our final reccomendation
+        ;;     & do this all again, with that one removed from all
+        ;;     potential candidate pools
+        :else
+        (let [first-choices (map first all-recs)
+              best-score (apply min (map :score first-choices))
+              best-choice (first (filter #(= (:score %) best-score)
+                                         first-choices))
+              best-desc (:desc best-choice)]
+          (recur (cons best-desc top3)
+                 (map #(if (= best-desc (:desc (first %))) (rest %) %)
+                      all-recs)))))))
+
+
+(defn user->recommendations [user user-table rating-table]
+  (let [rec-descs
+        (user->recommendation-descriptions user user-table rating-table)
+        recommendations (map #(make-rating
+                               user
+                               %
+                               (description->average-rating rating-table %))
+                             rec-descs)]
+    recommendations))
+    
+(defn users->recommendations [users user-table rating-table]
+  (concat (map #(user->recommendations % user-table rating-table)
+       users)))
+
+(defn generate-recs [filepath]
   (let [ratings (extract-ratings-from-file filepath)
-        user-table (make-user-table-from-ratings ratings)]
-    user-table))
+        user-table (make-user-table-from-ratings ratings)
+        rating-table  (make-rating-table-from-ratings ratings)]
+    (users->recommendations (get-users user-table) user-table rating-table)))
+
+
+

@@ -56,7 +56,7 @@
      `(fn weighted-distance-body [x1# x2#]
         (* ~weight (~distance-fn (~val-fn x1#) (~val-fn x2#))))))
 
-(defn desc-similiarty [d1 d2]
+(defn desc-similarity [d1 d2]
   (+
    ((weighted-distance boolean-dist :decaf?) d1 d2)
    ((weighted-distance boolean-dist :organic?) d1 d2)

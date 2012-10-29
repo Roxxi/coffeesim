@@ -67,6 +67,22 @@
     (is (= (extract-adj "Organic Fair Decaf Trade Caturra Panamanian")
            "Fair Trade Caturra"))))
   
+(deftest desc-parsing
+  (is (= (parse-description "Organic Fair Trade Decaf Caturra Sumatran")
+         #coffeesim.desc.CoffeeDesc{:description "Organic Fair Trade Decaf Caturra Sumatran",
+                                    :decaf? true,
+                                    :organic? true,
+                                    :fair-trade? true,
+                                    :adjectives "Caturra",
+                                    :origin "Sumatra"}))
+  (is (= (parse-description "Organic Fair Trade Decaf Caturra Sumatran")
+         (parse-description "Organic Fair Trade Decaf Caturra Sumatran")))
+  (is (not (= (parse-description "Organic Fair Trade Decaf Sumatran")
+              (parse-description "Organic Fair Trade Decaf Caturra Sumatran")))))
+  )
+
+
+
 
 
 
