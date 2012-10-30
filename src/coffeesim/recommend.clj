@@ -3,7 +3,6 @@
         coffeesim.rating
         coffeesim.desc
         coffeesim.desc-dist
-        roxxi.utils.print
         [clojure.string :only (split, join)]
         clojure.pprint))
 
@@ -44,11 +43,11 @@
 ;;
 ;; Let user->rating ::= a function that given a user returns their ratings
 ;;
-;; Let user->recommendation ::= a function that takes a user (u)
+;; Let user->recommendations ::= a function that takes a user (u)
 ;;                              and returns a recommendation defined as follows:
 ;;   Let descs ::= (map rating->description (sort (user->ratings u)))
 ;;   Let reccomendations ::=
-;;     Concatenate the following values:
+;;     Concatenate the following result:
 ;;       Let (already-tasted? x) ::= true iff x is in descs
 ;;         For each desc in descs:
 ;;           (take-n 3 (remove (already-tasted? (description->distances desc)))
@@ -73,7 +72,7 @@ through a purpose driven data source like a SQL database, etc"
 through a purpose driven data source like a SQL database, etc"
   (description->average-rating [_ description]
     "Returns the average rating that is associcated to a particular description")
-  (rating->descriptions-ordered-by-similarity [_ rating]
+  (rating->unique-descriptions-ordered-by-similarity [_ rating]
     "Returns descriptions sorted by descending
      similarity score for a given rating"))
 
@@ -94,11 +93,14 @@ through a purpose driven data source like a SQL database, etc"
   (description->average-rating [_ description]
     (let [all-descs (map :description ratings)
           same-rating? #(= (:description %) description)
+          ;; XXX seems to be an odd bug here that we need parse-int
+          ;; because suddenly the ratings are strings
+          ;; but everywhere else they're numbers automatically
           ratings  (map parse-int (map :rating (filter same-rating? ratings)))]
-      (double
+      (int
        (/ (reduce + 0 ratings)
           (count ratings)))))
-  (rating->descriptions-ordered-by-similarity [_ rating]
+  (rating->unique-descriptions-ordered-by-similarity [_ rating]
     (let [this-desc (:description rating)
           unique-descs (set (map :description ratings))]
       (sort
@@ -116,11 +118,11 @@ through a purpose driven data source like a SQL database, etc"
 (defn make-rating-table-from-ratings [ratings]
   (MemoryRatingTable. ratings))
 
-
 (defn user->recommendation-descriptions [user user-table rating-table]
   (let [user-ratings (user->ratings user-table user)
         closenesses (map
-                     #(rating->descriptions-ordered-by-similarity rating-table %)
+                     #(rating->unique-descriptions-ordered-by-similarity
+                       rating-table %)
                      user-ratings)
         user-descriptions (map :description user-ratings)
         user-already-tasted? (fn [scored-desc]

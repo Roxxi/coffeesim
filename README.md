@@ -15,6 +15,7 @@ where the domain of words that can be parsed is specified by the below mentioned
 or
 
 * `java -jar coffeesim-0.1.0-SNAPSHOT-standalone.jar summarize <absolute-path-to-the-file>`
+* `java -jar coffeesim-0.1.0-SNAPSHOT-standalone.jar recommend <absolute-path-to-the-file>`
 
 In order to generate some fake data for a file to test against or some descriptions to parse, in the `test/data` directory, the `coffee_gen.py` script will generate a sample set of data.
 
